@@ -21,16 +21,19 @@ class Asset(object):
 class StockAsset(Asset):
     def __init__(self, symbol_):
         super().__init__(symbol_)
+        self.type = "STK"
+
 
 
 class OptionAsset(Asset):
-    def __init__(self, symbol_, strike_, expiration_, rf_, type_,multiplier_=100):
+    def __init__(self, symbol_, strike_, expiration_, rf_, side_, multiplier_=100):
         super().__init__(symbol_)
+        self.type = "OPT"
         self.multiplier = multiplier_
         self.strike = strike_
         self.expiration = expiration_
         self.rf_ = rf_
-        self.type = type_
+        self.side = side_
 
     @property
     def time_to_exp(self, cur_time_=None):
@@ -49,9 +52,9 @@ class OptionAsset(Asset):
         return self._d1(s0_) - self.implied_vol * self.time_to_exp ** 0.5
 
     def bs_price(self, s0_,):
-        if self.type == 'C':
+        if self.side == 'C':
             return s0_ * norm(self._d1(s0_)) - self.strike * np.exp(-self.rf_ * self.time_to_exp) * norm(self._d2(s0_))
-        elif self.type == 'P':
+        elif self.side == 'P':
             return self.strike * np.exp(-self.rf_ * self.time_to_exp) * norm(-self._d2(s0_)) - s0_ * norm(-self._d1(s0_))
         else:
             raise ValueError("Option Type is not valid")
