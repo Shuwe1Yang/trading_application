@@ -9,25 +9,25 @@ from scipy.stats import norm
 
 
 class Asset(object):
-    def __init__(self, symbol_):
-        self.symbol = symbol_
+    def __init__(self, ticker_):
+        self.ticker = ticker_
         self.current_price = 0
         self.last_price = 0
 
     def __eq__(self, other):
-        return self.symbol == other.symbol
+        return self.ticker == other.ticker
 
 
 class StockAsset(Asset):
-    def __init__(self, symbol_):
-        super().__init__(symbol_)
+    def __init__(self, ticker_):
+        super().__init__(ticker_)
         self.type = "STK"
-
+        self.multiplier = 1
 
 
 class OptionAsset(Asset):
-    def __init__(self, symbol_, strike_, expiration_, rf_, side_, multiplier_=100):
-        super().__init__(symbol_)
+    def __init__(self, ticker_, strike_, expiration_, rf_, side_, multiplier_=100):
+        super().__init__(ticker_)
         self.type = "OPT"
         self.multiplier = multiplier_
         self.strike = strike_

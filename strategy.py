@@ -11,8 +11,8 @@ class Strategy(metaclass=abc.ABCMeta):
     def __init__(self):
         self.positions = {}
         self.ticker_trading = []
-        self.unrealized_pnl = 0
         self.t_cost = 0
+        self.unrealized_pnl = 0
         self.realized_pnl = 0
 
     @property
@@ -40,11 +40,20 @@ class Strategy(metaclass=abc.ABCMeta):
             # self.ticker_trading.append(asset)
             self.ticker_trading.append(target)
 
+    def place_trade(self):
+        pass
+
     def _warm_up(self):
         pass
 
     def _add_ticker(self, ticker_):
         self.ticker_trading.append(ticker_)
+
+    def _update(self, timestamp, asset_obj):
+        ticker = asset_obj.ticker
+        if ticker in self.positions.keys():
+            self.positions[ticker].update_tick_event(timestamp, asset_obj)
+
 
 
 class BuyHoldStrategy(Strategy):
