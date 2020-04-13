@@ -18,16 +18,15 @@ import matplotlib.pyplot as plt
         data = quandl.get_table('WIKI/PRICES', ticker=['AAPL', 'MSFT'], qopts={'columns': ['ticker', 'date', 'adj_close']},
                                 date={'gte': '2015-12-31', 'lte': '2016-12-31'}, paginate=True)
 """
-
+#TODO: Add dividends feature, Function for generating backtest result
 
 class Backtester(BuyHoldStrategy):
     def __init__(self, start_, end_, initial_cash_):
-        super().__init__()
+        super().__init__(initial_cash_)
         self.start, self.end = start_, end_
-        self.initial_cash = initial_cash_
-        self.market_value = 0
-        self.port_value = self.initial_cash + self.market_value
         self.state = None
+        self.result = {"Date": [], "Total_Pnl": [], "Realized_Pnl": [], "Unrealized_Pnl": [],
+                       "Total_shares": []}
 
     def set_up_df(self):
         self.state = len(self.ticker_trading)
@@ -41,13 +40,23 @@ class Backtester(BuyHoldStrategy):
         else:
             return None
 
+    def _record_result(self, idx):
+        self.result["Date"].append(idx)
+        self.result["Total_Pnl"].append(self.total_pnl)
+        self.result["Realized_Pnl"].append(self.realized_pnl)
+        self.result["Unrealized_Pnl"].append(self.unrealized_pnl)
+        self.result["Total_shares"].append(self.total_shares)
+
     def back_test(self):
         flag = 1
         while flag:
             df = self.set_up_df()
             iter = df.iterrows()
             for idx, row in iter:
-                self.trading_rules(idx, row)
+                self._record_result(idx)
+                asset_obj_lirst = [StockAsset(x, row['{}'.format(x)]) for x in row.index.tolist()]
+                for item in asset_obj_lirst:
+                    self.trading_rules(idx, item)
 
                 # Handling case that strategy adding new ticker
                 if self.state != len(self.ticker_trading):
@@ -60,15 +69,17 @@ class Backtester(BuyHoldStrategy):
                     flag = 0
 
     def get_backtest_result(self):
-        pass
+        plt.plot(self.result["Date"], self.result["Total_Pnl"])
+        plt.grid()
+        plt.show()
 
 
 def main():
     """ 1. Specifying: 1. initial target ticker to trade and
                        2. Backtest time frame
                        3. Initial Capital"""
-    ticker = ['TLT', 'LQD']
-    start, end = '2018-01-01', '2020-01-01'
+    ticker = ['IVV', 'LQD']
+    start, end = '2008-01-01', '2020-01-01'
     initial_capital = 1000
 
     """ 2. Set up ticker"""
@@ -77,6 +88,7 @@ def main():
 
     """ 3. Start Backtest"""
     strat.back_test()
+    strat.get_backtest_result()
 
 
 if __name__ == '__main__':

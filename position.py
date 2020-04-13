@@ -4,13 +4,13 @@ from asset import *
 
 
 class Position:
-    def __init__(self):
-        self.id = 0
-        self.asset = None
+    def __init__(self, asset_obj_):
+        self.trades_history = {}
+
+        self.asset = asset_obj_
         self.shares = 0
         self.cost_basis = 0
         self.market_value = 0
-        self.trades_history = {}
         self.unrealized_pnl = 0
         self.realized_pnl = 0
         self.t_cost = 0
@@ -51,7 +51,9 @@ class Position:
 
     def update_trx_event(self, timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_=0):
         self.trades_history[timestamp_] = (asset_obj_.ticker, new_shares_, trade_price_, t_cost_)
-        if self.shares * new_shares_ > 0:
+        if self.shares == 0:
+            self.open_position(timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_)
+        elif self.shares * new_shares_ > 0:
             # Size up
             self.open_position(timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_)
         else:

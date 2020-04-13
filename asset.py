@@ -9,9 +9,9 @@ from scipy.stats import norm
 
 
 class Asset(object):
-    def __init__(self, ticker_):
+    def __init__(self, ticker_, cur_price_):
         self.ticker = ticker_
-        self.current_price = 0
+        self.current_price = cur_price_
         self.last_price = 0
 
     def __eq__(self, other):
@@ -19,8 +19,8 @@ class Asset(object):
 
 
 class StockAsset(Asset):
-    def __init__(self, ticker_):
-        super().__init__(ticker_)
+    def __init__(self, ticker_, cur_price_):
+        super().__init__(ticker_, cur_price_)
         self.type = "STK"
         self.multiplier = 1
 
