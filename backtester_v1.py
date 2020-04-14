@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 """
 #TODO: Add dividends feature, Function for generating backtest result
 
+
 class Backtester(BuyHoldStrategy):
     def __init__(self, start_, end_, initial_cash_):
         super().__init__(initial_cash_)
@@ -78,7 +79,7 @@ def main():
     """ 1. Specifying: 1. initial target ticker to trade and
                        2. Backtest time frame
                        3. Initial Capital"""
-    ticker = ['IVV', 'LQD']
+    ticker = ['IVV']#, 'TLT']
     start, end = '2008-01-01', '2020-01-01'
     initial_capital = 1000
 

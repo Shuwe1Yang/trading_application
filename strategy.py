@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import numpy as np
 import datetime as dt
@@ -5,7 +6,12 @@ from asset import *
 from position import *
 import abc
 
+"""
+Output information to log file in live trading environment 
+"""
 asset_mapping = {"OPT": OptionAsset, "STK": StockAsset}
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Strategy(metaclass=abc.ABCMeta):
@@ -51,13 +57,21 @@ class Strategy(metaclass=abc.ABCMeta):
             self.ticker_trading.append(target)
 
     def place_trade(self, timestamp_, asset_obj_, new_shares_, trade_price_):
-        ticker = asset_obj_.ticker
-        if ticker in self.positions.keys():
-            self.positions[ticker].update_trx_event(timestamp_, asset_obj_, new_shares_, trade_price_)
+        if new_shares_ * trade_price_ > self.cash_on_hand:
+            pass
+            # logger.error("Time: {} - Insufficient buying power".format(timestamp_))
         else:
-            pos = Position(asset_obj_)
-            self.positions[ticker] = pos
-            self.positions[ticker].update_trx_event(timestamp_, asset_obj_, new_shares_, trade_price_)
+            ticker = asset_obj_.ticker
+            if ticker in self.positions.keys():
+                self.positions[ticker].update_trx_event(timestamp_, asset_obj_, new_shares_, trade_price_)
+            else:
+                pos = Position(asset_obj_)
+                self.positions[ticker] = pos
+                self.positions[ticker].update_trx_event(timestamp_, asset_obj_, new_shares_, trade_price_)
+            # logger.info("Time: {} - Execute {} shares".format(timestamp_, new_shares_))
+            self.cash_on_hand -= new_shares_ * trade_price_
+            self.total_shares += new_shares_
+            print(self.total_shares, self.positions[ticker].shares)
 
     def _warm_up(self):
         pass
@@ -67,9 +81,12 @@ class Strategy(metaclass=abc.ABCMeta):
 
     def _update(self, timestamp_, asset_obj_):
         ticker = asset_obj_.ticker
-        if ticker in self.positions.keys():
-            self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
-            self.unrealized_pnl += self.positions[ticker].unrealized_pnl
+        self.unrealized_pnl, self.realized_pnl = 0, 0
+        for k, v in self.positions.items():
+            if ticker == k:
+                self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
+                self.unrealized_pnl += self.positions[ticker].unrealized_pnl
+                self.realized_pnl += self.positions[ticker].realized_pnl
 
 
 class BuyHoldStrategy(Strategy):
@@ -79,20 +96,22 @@ class BuyHoldStrategy(Strategy):
 
     def trading_rules(self, timestamp_, asset_obj_, end_=None):
         ticker, price = asset_obj_.ticker, asset_obj_.current_price
-        if self.i % 5 == 0 and ticker == 'IVV' and len(self.positions.keys()) == 0:
-            self.place_trade(timestamp_, asset_obj_, 1, price)
-            self.total_shares += 10
-
-        if ticker == 'TLT':
-            self.i += 1
+        if timestamp_ == dt.datetime(2008, 1, 2, 0) and ticker == 'IVV' and self.total_shares == 0:
+            self.place_trade(timestamp_, asset_obj_, -1, price)
+        if timestamp_ == dt.datetime(2008, 8, 1, 0) and ticker == 'IVV' and self.total_shares != 0:
+            self.place_trade(timestamp_, asset_obj_, -self.total_shares, price)
         self._update(timestamp_, asset_obj_)
-
-
+        print("Time: {} - Price: {} - Cost Basis: {} - Total: {} - Validation: {}".format(timestamp_,
+                                                                                          price,
+                                                                                          self.positions[ticker].cost_basis,
+                                                                                          self.realized_pnl,
+                                                                                          price - self.positions[ticker].cost_basis))
 
 def main():
-    tmp = BuyHoldStrategy(10000)
+    tmp = BuyHoldStrategy(1000)
     tmp.set_ticker("AAPL", asset_type_="STK")
     print(tmp.ticker_trading)
+
 
 if __name__ == '__main__':
     main()
