@@ -71,7 +71,6 @@ class Strategy(metaclass=abc.ABCMeta):
             # logger.info("Time: {} - Execute {} shares".format(timestamp_, new_shares_))
             self.cash_on_hand -= new_shares_ * trade_price_
             self.total_shares += new_shares_
-            print(self.total_shares, self.positions[ticker].shares)
 
     def _warm_up(self):
         pass
@@ -81,12 +80,15 @@ class Strategy(metaclass=abc.ABCMeta):
 
     def _update(self, timestamp_, asset_obj_):
         ticker = asset_obj_.ticker
-        self.unrealized_pnl, self.realized_pnl = 0, 0
-        for k, v in self.positions.items():
-            if ticker == k:
-                self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
+        if ticker in self.positions.keys():
+            self.unrealized_pnl, self.realized_pnl = 0, 0
+            for k, v in self.positions.items():
+                if ticker == k:
+                    self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
                 self.unrealized_pnl += self.positions[ticker].unrealized_pnl
                 self.realized_pnl += self.positions[ticker].realized_pnl
+        else:
+            pass
 
 
 class BuyHoldStrategy(Strategy):
@@ -98,14 +100,17 @@ class BuyHoldStrategy(Strategy):
         ticker, price = asset_obj_.ticker, asset_obj_.current_price
         if timestamp_ == dt.datetime(2008, 1, 2, 0) and ticker == 'IVV' and self.total_shares == 0:
             self.place_trade(timestamp_, asset_obj_, -1, price)
-        if timestamp_ == dt.datetime(2008, 8, 1, 0) and ticker == 'IVV' and self.total_shares != 0:
-            self.place_trade(timestamp_, asset_obj_, -self.total_shares, price)
+        if timestamp_ == dt.datetime(2008, 8, 1, 0) and ticker == 'TLT' and self.total_shares != 0:
+            self.place_trade(timestamp_, asset_obj_, 1, price)
+
         self._update(timestamp_, asset_obj_)
-        print("Time: {} - Price: {} - Cost Basis: {} - Total: {} - Validation: {}".format(timestamp_,
-                                                                                          price,
-                                                                                          self.positions[ticker].cost_basis,
-                                                                                          self.realized_pnl,
-                                                                                          price - self.positions[ticker].cost_basis))
+
+        # print("Time: {} - Price: {} - Cost Basis: {} - Total: {} - Validation: {}".format(timestamp_,
+        #                                                                                   price,
+        #                                                                                   self.positions[ticker].cost_basis,
+        #                                                                                   self.realized_pnl,
+        #                                                                                   price - self.positions[ticker].cost_basis))
+
 
 def main():
     tmp = BuyHoldStrategy(1000)

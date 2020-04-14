@@ -25,11 +25,12 @@ class Backtester(BuyHoldStrategy):
     def __init__(self, start_, end_, initial_cash_):
         super().__init__(initial_cash_)
         self.start, self.end = start_, end_
+        self.div_mode = False
         self.state = None
         self.result = {"Date": [], "Total_Pnl": [], "Realized_Pnl": [], "Unrealized_Pnl": [],
                        "Total_shares": []}
 
-    def set_up_df(self):
+    def _set_up_df(self):
         self.state = len(self.ticker_trading)
         if isinstance(self.ticker_trading, list):
             if len(self.ticker_trading) > 1:
@@ -37,10 +38,17 @@ class Backtester(BuyHoldStrategy):
             else:
                 df = yf.Ticker(self.ticker_trading[0]).history(start=self.start, end=self.end)['Close'].to_frame()
                 df.rename(columns={'Close': '{}'.format(self.ticker_trading[0])}, inplace=True)
+
             return df
         else:
             return None
 
+    def set_dividends_mode(self, mode_):
+        self.div_mode = mode_
+
+    def _set_up_div_df(self):
+        pass
+       
     def _record_result(self, idx):
         self.result["Date"].append(idx)
         self.result["Total_Pnl"].append(self.total_pnl)
@@ -51,7 +59,7 @@ class Backtester(BuyHoldStrategy):
     def back_test(self):
         flag = 1
         while flag:
-            df = self.set_up_df()
+            df = self._set_up_df()
             iter = df.iterrows()
             for idx, row in iter:
                 self._record_result(idx)
@@ -79,14 +87,14 @@ def main():
     """ 1. Specifying: 1. initial target ticker to trade and
                        2. Backtest time frame
                        3. Initial Capital"""
-    ticker = ['IVV']#, 'TLT']
+    ticker = ['IVV', 'TLT']
     start, end = '2008-01-01', '2020-01-01'
     initial_capital = 1000
 
     """ 2. Set up ticker"""
     strat = Backtester(start, end, initial_capital)
     strat.set_ticker(ticker, asset_type_="STK")
-
+    strat.set_dividends_mode(mode_=True)
     """ 3. Start Backtest"""
     strat.back_test()
     strat.get_backtest_result()
