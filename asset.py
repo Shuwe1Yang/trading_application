@@ -19,10 +19,11 @@ class Asset(object):
 
 
 class StockAsset(Asset):
-    def __init__(self, ticker_, cur_price_):
+    def __init__(self, ticker_, cur_price_, div_=0):
         super().__init__(ticker_, cur_price_)
         self.type = "STK"
         self.multiplier = 1
+        self.div = div_
 
 
 class OptionAsset(Asset):

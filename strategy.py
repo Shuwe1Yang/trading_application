@@ -25,6 +25,7 @@ class Strategy(metaclass=abc.ABCMeta):
         self.market_value = 0
         self.unrealized_pnl = 0
         self.realized_pnl = 0
+        self.div_accumulated = 0
         self.total_shares = 0
 
     @property
@@ -47,13 +48,9 @@ class Strategy(metaclass=abc.ABCMeta):
         target = args[0]
         if isinstance(target, list):
             for item in target:
-                # asset = asset_mapping[asset_type_](item)
-                # self.ticker_trading.append(asset)
                 self.ticker_trading.append(item)
 
         if isinstance(target, str):
-            # asset = asset_mapping[asset_type_](target)
-            # self.ticker_trading.append(asset)
             self.ticker_trading.append(target)
 
     def place_trade(self, timestamp_, asset_obj_, new_shares_, trade_price_):
@@ -81,12 +78,14 @@ class Strategy(metaclass=abc.ABCMeta):
     def _update(self, timestamp_, asset_obj_):
         ticker = asset_obj_.ticker
         if ticker in self.positions.keys():
-            self.unrealized_pnl, self.realized_pnl = 0, 0
+            self.unrealized_pnl, self.realized_pnl, self.div_accumulated = 0, 0, 0
             for k, v in self.positions.items():
                 if ticker == k:
                     self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
+                self.div_accumulated += self.positions[ticker].div_accumulated
                 self.unrealized_pnl += self.positions[ticker].unrealized_pnl
-                self.realized_pnl += self.positions[ticker].realized_pnl
+                self.realized_pnl += self.positions[ticker].realized_pnl + self.div_accumulated
+
         else:
             pass
 
@@ -97,11 +96,11 @@ class BuyHoldStrategy(Strategy):
         self.i = 0
 
     def trading_rules(self, timestamp_, asset_obj_, end_=None):
-        ticker, price = asset_obj_.ticker, asset_obj_.current_price
+        ticker, price, div = asset_obj_.ticker, asset_obj_.current_price, asset_obj_.div
         if timestamp_ == dt.datetime(2008, 1, 2, 0) and ticker == 'IVV' and self.total_shares == 0:
-            self.place_trade(timestamp_, asset_obj_, -1, price)
-        if timestamp_ == dt.datetime(2008, 8, 1, 0) and ticker == 'TLT' and self.total_shares != 0:
             self.place_trade(timestamp_, asset_obj_, 1, price)
+        # if timestamp_ == dt.datetime(2008, 8, 1, 0) and ticker == 'TLT' and self.total_shares != 0:
+        #     self.place_trade(timestamp_, asset_obj_, 1, price)
 
         self._update(timestamp_, asset_obj_)
 
