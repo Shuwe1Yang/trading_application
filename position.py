@@ -4,13 +4,14 @@ from asset import *
 
 
 class Position:
-    def __init__(self):
-        self.id = 0
-        self.asset = None
+    def __init__(self, asset_obj_):
+        self.trades_history = {}
+
+        self.asset = asset_obj_
         self.shares = 0
         self.cost_basis = 0
         self.market_value = 0
-        self.trades_history = {}
+        self.div_accumulated = 0
         self.unrealized_pnl = 0
         self.realized_pnl = 0
         self.t_cost = 0
@@ -29,6 +30,10 @@ class Position:
 
         self.unrealized_pnl = (cur_price - self.cost_basis) * self.shares
         self.market_value = cur_price * self.shares
+        if asset_obj_.type == 'STK':
+            div = self.shares * asset_obj_.div
+            self.div_accumulated += div
+            self.realized_pnl += div
 
     def _process_trx(self, timestamp_, new_shares_, trade_price_, t_cost_=0):
         if new_shares_ + self.shares != 0:
@@ -46,21 +51,24 @@ class Position:
 
     def close_position(self, timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_=0):
         self.trades_history[timestamp_] = (asset_obj_.ticker, new_shares_, trade_price_, t_cost_)
-        self.realized_pnl += new_shares_ * (trade_price_ - self.cost_basis) - t_cost_
+        self.realized_pnl += -new_shares_ * (trade_price_ - self.cost_basis) - t_cost_
         self._process_trx(timestamp_, new_shares_, trade_price_, t_cost_)
 
     def update_trx_event(self, timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_=0):
         self.trades_history[timestamp_] = (asset_obj_.ticker, new_shares_, trade_price_, t_cost_)
-        if self.shares * new_shares_ > 0:
+
+        if self.shares == 0:
+            self.open_position(timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_)
+        elif self.shares * new_shares_ > 0:
             # Size up
             self.open_position(timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_)
         else:
             # Close position all or partial
             if self.shares + new_shares_ <= 0:
-                self.close_position(timestamp_, asset_obj_, self.shares, trade_price_, t_cost_)
-                new_shares_ = self.shares + new_shares_
-                if new_shares_ != 0:
-                    self.open_position(timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_)
+                remain_shares = self.shares + new_shares_
+                self.close_position(timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_)
+                if remain_shares != 0:
+                    self.open_position(timestamp_, asset_obj_, remain_shares, trade_price_, t_cost_)
             else:
                 self.close_position(timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_)
 
