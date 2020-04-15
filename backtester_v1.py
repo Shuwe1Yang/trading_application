@@ -27,8 +27,8 @@ class Backtester(BuyHoldStrategy):
         self.start, self.end = start_, end_
         self.div_mode = False
         self.state = None
-        self.result = {"Date": [], "Total_Pnl": [], "Realized_Pnl": [], "Unrealized_Pnl": [],
-                       "Total_shares": []}
+        self.result = {"Date": [], "Cash": [], "Total_Pnl": [], "Realized_Pnl": [], "Unrealized_Pnl": [],
+                       "Total_shares": [], "Port_value": [], "Div_accumulated": []}
 
     def _set_up_df(self):
         self.state = len(self.ticker_trading)
@@ -53,10 +53,14 @@ class Backtester(BuyHoldStrategy):
 
     def _record_result(self, idx):
         self.result["Date"].append(idx)
+        self.result["Cash"].append(self.cash_on_hand)
         self.result["Total_Pnl"].append(self.total_pnl)
         self.result["Realized_Pnl"].append(self.realized_pnl)
         self.result["Unrealized_Pnl"].append(self.unrealized_pnl)
         self.result["Total_shares"].append(self.total_shares)
+        if self.div_mode:
+            self.result["Div_accumulated"].append(self.div_accumulated)
+
 
     def _new_ticker_checker(self, idx):
         if self.state != len(self.ticker_trading):
@@ -93,22 +97,18 @@ class Backtester(BuyHoldStrategy):
                     flag = 0
 
     def get_backtest_result(self):
-        plt.plot(self.result["Date"], self.result["Realized_Pnl"])
+        plt.plot(self.result["Date"], self.result["Total_Pnl"])
+        plt.plot(self.result["Date"], self.result["Div_accumulated"])
         plt.grid()
         plt.show()
-
-        plt.plot(self.result["Date"], self.result["Total_shares"])
-        plt.grid()
-        plt.show()
-
 
 def main():
     """ 1. Specifying: 1. initial target ticker to trade and
                        2. Backtest time frame
                        3. Initial Capital"""
-    ticker = ['IVV'] #, 'TLT']
+    ticker = ['QYLD'] #, 'TLT']
     start, end = '2008-01-01', '2020-01-01'
-    initial_capital = 1000
+    initial_capital = 10000
 
     """ 2. Set up ticker"""
     strat = Backtester(start, end, initial_capital)

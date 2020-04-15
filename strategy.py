@@ -84,7 +84,7 @@ class Strategy(metaclass=abc.ABCMeta):
                     self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
                 self.div_accumulated += self.positions[ticker].div_accumulated
                 self.unrealized_pnl += self.positions[ticker].unrealized_pnl
-                self.realized_pnl += self.positions[ticker].realized_pnl + self.div_accumulated
+                self.realized_pnl += self.positions[ticker].realized_pnl
 
         else:
             pass
@@ -93,22 +93,16 @@ class Strategy(metaclass=abc.ABCMeta):
 class BuyHoldStrategy(Strategy):
     def __init__(self, initial_cash):
         super().__init__(initial_cash)
-        self.i = 0
+        self.tracker = []
 
     def trading_rules(self, timestamp_, asset_obj_, end_=None):
         ticker, price, div = asset_obj_.ticker, asset_obj_.current_price, asset_obj_.div
-        if timestamp_ == dt.datetime(2008, 1, 2, 0) and ticker == 'IVV' and self.total_shares == 0:
-            self.place_trade(timestamp_, asset_obj_, 1, price)
-        # if timestamp_ == dt.datetime(2008, 8, 1, 0) and ticker == 'TLT' and self.total_shares != 0:
-        #     self.place_trade(timestamp_, asset_obj_, 1, price)
+
+        if (timestamp_.year, timestamp_.month) not in self.tracker:
+            self.place_trade(timestamp_, asset_obj_, 2, price)
+            self.tracker.append((timestamp_.year, timestamp_.month))
 
         self._update(timestamp_, asset_obj_)
-
-        # print("Time: {} - Price: {} - Cost Basis: {} - Total: {} - Validation: {}".format(timestamp_,
-        #                                                                                   price,
-        #                                                                                   self.positions[ticker].cost_basis,
-        #                                                                                   self.realized_pnl,
-        #                                                                                   price - self.positions[ticker].cost_basis))
 
 
 def main():
