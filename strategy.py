@@ -79,10 +79,13 @@ class Strategy(metaclass=abc.ABCMeta):
         ticker = asset_obj_.ticker
         if ticker in self.positions.keys():
             self.unrealized_pnl, self.realized_pnl, self.div_accumulated = 0, 0, 0
+            self.market_value = 0
             for k, v in self.positions.items():
                 if ticker == k:
                     self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
+                #TODO: Check if all those things are needed to be updated
                 self.div_accumulated += self.positions[ticker].div_accumulated
+                self.market_value += self.positions[ticker].market_value
                 self.unrealized_pnl += self.positions[ticker].unrealized_pnl
                 self.realized_pnl += self.positions[ticker].realized_pnl
 
