@@ -21,7 +21,6 @@ class Position:
     def total_pnl(self):
         return self.unrealized_pnl + self.realized_pnl - self.t_cost
 
-    #TODO: 3. Design flow of process tick_event and trx_event
     def update_tick_event(self, timestamp_, asset_obj_):
         cur_price = asset_obj_.current_price
         self.last_time_update = timestamp_
@@ -33,7 +32,6 @@ class Position:
         if asset_obj_.type == 'STK':
             div = self.shares * asset_obj_.div
             self.div_accumulated += div
-            self.realized_pnl += div
 
     def _process_trx(self, timestamp_, new_shares_, trade_price_, t_cost_=0):
         if new_shares_ + self.shares != 0:
