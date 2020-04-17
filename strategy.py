@@ -27,18 +27,20 @@ class Strategy(metaclass=abc.ABCMeta):
         self.realized_pnl = 0
         self.div_accumulated = 0
         self.total_shares = 0
+        self.port_value = self.market_value + self.cash_on_hand
+        self.total_pnl = self.unrealized_pnl + self.realized_pnl
 
-    @property
-    def port_value(self):
-        return self.market_value + self.cash_on_hand
+    # @property
+    # def port_value(self):
+    #     return self.market_value + self.cash_on_hand
+
+    # @property
+    # def total_pnl(self):
+    #     return self.unrealized_pnl + self.realized_pnl + self.t_cost
 
     @property
     def asset_trading(self):
         return list(set([x.type for x in self.ticker_trading]))
-
-    @property
-    def total_pnl(self):
-        return self.unrealized_pnl + self.realized_pnl + self.t_cost
 
     @abc.abstractmethod
     def trading_rules(self, timestamp_, asset_obj, end_=None):
@@ -88,6 +90,8 @@ class Strategy(metaclass=abc.ABCMeta):
                 self.market_value += self.positions[ticker].market_value
                 self.unrealized_pnl += self.positions[ticker].unrealized_pnl
                 self.realized_pnl += self.positions[ticker].realized_pnl
+                self.port_value = self.cash_on_hand + self.market_value
+                self.total_pnl = self.unrealized_pnl + self.realized_pnl
 
         else:
             pass
@@ -102,16 +106,14 @@ class BuyHoldStrategy(Strategy):
         ticker, price, div = asset_obj_.ticker, asset_obj_.current_price, asset_obj_.div
 
         if (timestamp_.year, timestamp_.month) not in self.tracker:
-            self.place_trade(timestamp_, asset_obj_, 2, price)
+            self.place_trade(timestamp_, asset_obj_, 1, price)
             self.tracker.append((timestamp_.year, timestamp_.month))
 
         self._update(timestamp_, asset_obj_)
 
 
 def main():
-    tmp = BuyHoldStrategy(1000)
-    tmp.set_ticker("AAPL", asset_type_="STK")
-    print(tmp.ticker_trading)
+    pass
 
 
 if __name__ == '__main__':
