@@ -21,21 +21,21 @@ from strategy import *
 
 INDEX_MAPPING = {"^GSPC": "SPX", "^NDX": "NDX100"}
 
+
 class Backtester(BuyHoldStrategy):
     def __init__(self, start_, end_, initial_cash_):
         super().__init__(initial_cash_)
         self.start, self.end = start_, end_
-        self.div_mode = False
+        self.is_div_mode = False
         self.state = None
-        self.result = {"Date": [], "Cash": [], "Total_Pnl": [], "Realized_Pnl": [], "Unrealized_Pnl": [],
-                       "Total_shares": [], "Port_value": [], "Div_accumulated": [], "Market_Value": []}
+        self.result = {"date": [], "cash": [], "total_pnl": [], "realized_pnl": [], "unrealized_pnl": [],
+                       "total_shares": [], "port_value": [], "div_accumulated": [], "market_value": []}
 
     def _set_up_df(self):
         self.state = len(self.ticker_trading)
         if isinstance(self.ticker_trading, list):
             df, div_df, remain_ticker = self._other_data_helper()
             df = self._index_data_helper(df, remain_ticker)
-            print(df)
             return df, div_df
         else:
             return None, None
@@ -44,12 +44,12 @@ class Backtester(BuyHoldStrategy):
         symbol_list = [x for x in self.ticker_trading if '^' not in x]
         if len(symbol_list) > 1:
             df = yf.Tickers(symbol_list).history(start=self.start, end=self.end, auto_adjust=False)
-            div_df = df['Dividends'] if self.div_mode else None
+            div_df = df['Dividends'] if self.is_div_mode else None
             df = df['Close']
         elif len(symbol_list) == 1:
             df = yf.Ticker(symbol_list[0]).history(start=self.start, end=self.end, auto_adjust=False)
             div_df = df['Dividends'].to_frame().rename(columns={'Dividends': '{}'.format(symbol_list[0])}) \
-                if self.div_mode else None
+                if self.is_div_mode else None
             df = df['Close'].to_frame()
             df.rename(columns={'Close': '{}'.format(symbol_list[0])}, inplace=True)
         else:
@@ -73,18 +73,15 @@ class Backtester(BuyHoldStrategy):
             return df_
 
     def set_dividends_mode(self, mode_):
-        self.div_mode = mode_
+        self.is_div_mode = mode_
 
     def _record_result(self, idx):
-        self.result["Date"].append(idx)
-        self.result["Cash"].append(self.cash_on_hand)
-        self.result["Total_Pnl"].append(self.total_pnl)
-        self.result["Realized_Pnl"].append(self.realized_pnl)
-        self.result["Unrealized_Pnl"].append(self.unrealized_pnl)
-        self.result["Total_shares"].append(self.total_shares)
-        self.result["Market_Value"].append(self.market_value)
-        if self.div_mode:
-            self.result["Div_accumulated"].append(self.div_accumulated)
+        class_attr = self.__dict__
+        for key in self.result.keys():
+            attr_value = class_attr.get(key, None) if key != 'date' else idx
+            if not self.is_div_mode and key == "div_accumulated":
+                continue
+            self.result.get(key).append(attr_value)
 
     def _new_ticker_checker(self, idx):
         if self.state != len(self.ticker_trading):
@@ -121,12 +118,14 @@ class Backtester(BuyHoldStrategy):
                     flag = 0
 
     def get_backtest_result(self):
-        days_hold = (self.result["Date"][-1] - self.result["Date"][0]).days
-        annual_rtn = (1 + self.result["Div_accumulated"][-1] / (self.positions['QYLD'].cost_basis*self.total_shares)) **\
+        days_hold = (self.result["date"][-1] - self.result["date"][0]).days
+        annual_rtn = (1 + self.result["unrealized_pnl"][-1] / (self.positions["QYLD"].cost_basis*self.total_shares)) **\
                      (365/days_hold) - 1
         print("Annualized Return: {}%".format(round(annual_rtn*100, 2)))
-        plt.plot(self.result["Date"], self.result["Div_accumulated"])
-        # plt.plot(self.result["Date"], self.result["Market_Value"])
+        plt.plot(self.result["date"], self.result["total_pnl"])
+        plt.grid()
+        plt.show()
+        plt.plot(self.result["date"], self.result["port_value"])
         plt.grid()
         plt.show()
 
@@ -135,7 +134,7 @@ def main():
     """ 1. Specifying: 1. initial target ticker to trade and
                        2. Backtest time frame
                        3. Initial Capital"""
-    ticker = ['QYLD', '^NDX']
+    ticker = ['QYLD']
     start, end = '2014-01-01', '2020-01-01'
     initial_capital = 10000
 
