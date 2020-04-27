@@ -9,7 +9,7 @@ INDEX_MAPPING = {"^GSPC": "SPX", "^NDX": "NDX100"}
 
 
 class DataFrameGenerator(object):
-    def __init__(self, ticker_list_, start_, end_, div_mode_=div_mode_):
+    def __init__(self, ticker_list_, start_, end_, div_mode_):
         self.ticker_trading = ticker_list_
         self.start, self.end = start_, end_
         self.div_mode = div_mode_
@@ -55,13 +55,34 @@ class DataFrameGenerator(object):
             return df_
 
 
-def main():
-    ticker = ['QYLD', '^NDX']
-    start, end = '2014-01-01', '2020-01-01'
-    tmp = DataFrameGenerator(ticker, start, end, div_mode_=False)
-    tmp.set_up_df()
-    df = tmp.df
+""" Some calculation function taking dictionary as input"""
+#TODO: Finalize dividends strategy calculations
 
+
+def get_annualized_return(date_series_, portfolio_value_series_):
+    days_hold = (date_series_[-1] - date_series_[0]).days
+    rtn = (1 + portfolio_value_series_[-1] / portfolio_value_series_[0]) ** (365 / days_hold) - 1
+    return rtn
+
+
+def get_sharpe_ratio(date_series_, portfolio_value_series, rf_):
+    rtn_series = np.diff(portfolio_value_series) / portfolio_value_series[:-1]
+    rtn = get_annualized_return(date_series_, portfolio_value_series)
+    std = np.std(rtn_series) * np.sqrt(252)
+    return (rtn - rf_) / std
+
+
+def get_max_drawdown():
+    pass
+
+
+def main():
+    # ticker = ['QYLD', '^NDX']
+    # start, end = '2014-01-01', '2020-01-01'
+    # tmp = DataFrameGenerator(ticker, start, end, div_mode_=False)
+    # tmp.set_up_df()
+    # df = tmp.df
+    pass
 
 if __name__ == '__main__':
     main()
