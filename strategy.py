@@ -85,7 +85,6 @@ class Strategy(metaclass=abc.ABCMeta):
             for k, v in self.positions.items():
                 if ticker == k:
                     self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
-                #TODO: Check if all those things are needed to be updated
                 self.div_accumulated += self.positions[ticker].div_accumulated
                 self.market_value += self.positions[ticker].market_value
                 self.unrealized_pnl += self.positions[ticker].unrealized_pnl
@@ -106,14 +105,25 @@ class BuyHoldStrategy(Strategy):
         ticker, price, div = asset_obj_.ticker, asset_obj_.current_price, asset_obj_.div
 
         if (timestamp_.year, timestamp_.month) not in self.tracker:
-            self.place_trade(timestamp_, asset_obj_, 1, price)
+            self.cash_on_hand += 400
+            shares = 400 // price
+            self.place_trade(timestamp_, asset_obj_, shares, price)
             self.tracker.append((timestamp_.year, timestamp_.month))
 
         self._update(timestamp_, asset_obj_)
 
 
+class BuyHoldStrategyTwo(Strategy):
+    def __int__(self, initial_cash):
+        super().__init__(initial_cash)
+        self.tracker = []
+
+    def trading_rules(self, timestamp_, asset_obj, end_=None):
+        pass
+
+
 def main():
-    pass
+    print(40//23)
 
 
 if __name__ == '__main__':

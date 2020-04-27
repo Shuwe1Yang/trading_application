@@ -6,6 +6,7 @@ import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
 from strategy import *
+from research_tools import *
 
 """ Quandl API
     def API_key(self, source_='Quandal'):
@@ -20,6 +21,8 @@ from strategy import *
 """
 
 INDEX_MAPPING = {"^GSPC": "SPX", "^NDX": "NDX100"}
+RESULT_MAPPING = {"cash_on_hand": 0, "total_pnl": 1, "realized_pnl": 2, "unrealized_pnl": 3,
+                  "total_shares": 4, "port_value": 5, "div_accumulated": 6, "market_value": 7}
 
 
 class Backtester(BuyHoldStrategy):
@@ -28,8 +31,10 @@ class Backtester(BuyHoldStrategy):
         self.start, self.end = start_, end_
         self.is_div_mode = False
         self.state = None
-        self.result = {"date": [], "cash": [], "total_pnl": [], "realized_pnl": [], "unrealized_pnl": [],
-                       "total_shares": [], "port_value": [], "div_accumulated": [], "market_value": []}
+        days = (dt.datetime.strptime(end_, '%Y-%m-%d') - dt.datetime.strptime(start_, '%Y-%m-%d')).days
+        date_array = np.empty((days, 1), dtype=pd.Timestamp)
+        result_array = np.empty((days, len(RESULT_MAPPING.keys())))
+        self.result = np.concatenate((result_array, date_array), axis=1)
 
     def _set_up_df(self):
         self.state = len(self.ticker_trading)
@@ -75,13 +80,14 @@ class Backtester(BuyHoldStrategy):
     def set_dividends_mode(self, mode_):
         self.is_div_mode = mode_
 
-    def _record_result(self, idx):
+    def _record_result(self, i, idx):
         class_attr = self.__dict__
-        for key in self.result.keys():
-            attr_value = class_attr.get(key, None) if key != 'date' else idx
+        for key in RESULT_MAPPING.keys():
+            attr_value = class_attr.get(key, None)
             if not self.is_div_mode and key == "div_accumulated":
                 continue
-            self.result.get(key).append(attr_value)
+            self.result[i, RESULT_MAPPING.get(key)] = attr_value
+        self.result[i, -1] = idx
 
     def _new_ticker_checker(self, idx):
         if self.state != len(self.ticker_trading):
@@ -97,8 +103,9 @@ class Backtester(BuyHoldStrategy):
             df, div_df = self._set_up_df()
             iter = df.iterrows()
 
-            for idx, row in iter:
-                self._record_result(idx)
+            for i, item in enumerate(iter):
+                idx, row = item
+                self._record_result(i, idx)
                 if div_df is not None:
                     asset_obj_list = [StockAsset(x, row[x], div_df.loc[idx, x]) for x in div_df.columns.tolist()] + \
                                      [StockAsset(x, row[x]) for x in row.index.tolist() if x not in div_df.columns.tolist()]
@@ -118,33 +125,47 @@ class Backtester(BuyHoldStrategy):
                     flag = 0
 
     def get_backtest_result(self):
-        days_hold = (self.result["date"][-1] - self.result["date"][0]).days
-        annual_rtn = (1 + self.result["unrealized_pnl"][-1] / (self.positions["QYLD"].cost_basis*self.total_shares)) **\
-                     (365/days_hold) - 1
-        print("Annualized Return: {}%".format(round(annual_rtn*100, 2)))
-        plt.plot(self.result["date"], self.result["total_pnl"])
-        plt.grid()
-        plt.show()
-        plt.plot(self.result["date"], self.result["port_value"])
-        plt.grid()
-        plt.show()
+        #TODO: Remove Calculation part and use research_tools functions
+        mask = (self.result != None).all(axis=1)
+        self.result = self.result[mask, :]
+
+        days_hold = (self.result[-1, -1] - self.result[0, -1]).days
+        annual_rtn = (1 + self.result[-1, RESULT_MAPPING["div_accumulated"]] / (72 * 400)) \
+                     ** (365 / days_hold) - 1
+        annual_rtn_all = (1 + (self.result[-1, RESULT_MAPPING["div_accumulated"]] + self.result[-1, RESULT_MAPPING["unrealized_pnl"]]) /
+                          (72 * 400)) ** (365/days_hold) - 1
+        print("============ {} ============".format(self.ticker_trading[0]))
+        print("Final Portfolio Value: {}".format(round(self.port_value, 2)))
+        print("Cash remained: {}".format(round(self.cash_on_hand, 2)))
+        print("Avg Cost: {}".format(round(self.positions[self.ticker_trading[0]].cost_basis), 2))
+        print("Total Shares: {}".format(self.total_shares))
+        print("Div Acculated: {}".format(round(self.div_accumulated, 2)))
+        print("Annualized Return(Div): {}%".format(round(annual_rtn * 100, 2)))
+        print("Annualized Return(Div+Price): {}%\n".format(round(annual_rtn_all*100, 2)))
 
 
 def main():
-    """ 1. Specifying: 1. initial target ticker to trade and
-                       2. Backtest time frame
-                       3. Initial Capital"""
-    ticker = ['QYLD']
-    start, end = '2014-01-01', '2020-01-01'
-    initial_capital = 10000
+    print("************ Buy Hold Strat: Add 1 share per month ************")
 
-    """ 2. Set up ticker"""
-    strat = Backtester(start, end, initial_capital)
-    strat.set_ticker(ticker, asset_type_="STK")
-    strat.set_dividends_mode(mode_=True)
-    """ 3. Start Backtest"""
-    strat.back_test()
-    strat.get_backtest_result()
+    for item in ['QQQ', 'IVV', 'QYLD']:
+        """ 1. Specifying: 1. initial target ticker to trade and
+                           2. Backtest time frame
+                           3. Initial Capital"""
+        ticker = [item]
+        start, end = '2014-01-01', '2020-01-01'
+        initial_capital = 1
+
+        """ 2. Set up ticker"""
+        strat = Backtester(start, end, initial_capital)
+        strat.set_ticker(ticker, asset_type_="STK")
+        strat.set_dividends_mode(mode_=True)
+        """ 3. Start Backtest"""
+        strat.back_test()
+        strat.get_backtest_result()
+        plt.plot(strat.result[:, -1], strat.result[:, RESULT_MAPPING["total_pnl"]], label=strat.ticker_trading[0])
+    plt.grid()
+    plt.legend()
+    plt.show()
 
 
 if __name__ == '__main__':
