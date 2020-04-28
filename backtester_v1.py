@@ -22,12 +22,12 @@ from research_tools import *
 
 INDEX_MAPPING = {"^GSPC": "SPX", "^NDX": "NDX100"}
 RESULT_MAPPING = {"cash_on_hand": 0, "total_pnl": 1, "realized_pnl": 2, "unrealized_pnl": 3,
-                  "total_shares": 4, "port_value": 5, "div_accumulated": 6, "market_value": 7}
+                  "total_shares": 4, "port_value": 5, "div_accumulated": 6, "market_value": 7, "cash_invested": 8}
 
 
 class Backtester(BuyHoldStrategy):
-    def __init__(self, start_, end_, initial_cash_):
-        super().__init__(initial_cash_)
+    def __init__(self, start_, end_, initial_cash_, type_):
+        super().__init__(initial_cash_, type_)
         self.start, self.end = start_, end_
         self.is_div_mode = False
         self.state = None
@@ -129,19 +129,16 @@ class Backtester(BuyHoldStrategy):
         mask = (self.result != None).all(axis=1)
         self.result = self.result[mask, :]
 
-        days_hold = (self.result[-1, -1] - self.result[0, -1]).days
-        annual_rtn = (1 + self.result[-1, RESULT_MAPPING["div_accumulated"]] / (72 * 400)) \
-                     ** (365 / days_hold) - 1
-        annual_rtn_all = (1 + (self.result[-1, RESULT_MAPPING["div_accumulated"]] + self.result[-1, RESULT_MAPPING["unrealized_pnl"]]) /
-                          (72 * 400)) ** (365/days_hold) - 1
+        annual_rtn = get_annualized_return(self.result[:, -1], self.result[:, RESULT_MAPPING["port_value"]],
+                                           self.result[:, RESULT_MAPPING["cash_invested"]], self.strategy_type)
+
         print("============ {} ============".format(self.ticker_trading[0]))
         print("Final Portfolio Value: {}".format(round(self.port_value, 2)))
         print("Cash remained: {}".format(round(self.cash_on_hand, 2)))
         print("Avg Cost: {}".format(round(self.positions[self.ticker_trading[0]].cost_basis), 2))
         print("Total Shares: {}".format(self.total_shares))
         print("Div Acculated: {}".format(round(self.div_accumulated, 2)))
-        print("Annualized Return(Div): {}%".format(round(annual_rtn * 100, 2)))
-        print("Annualized Return(Div+Price): {}%\n".format(round(annual_rtn_all*100, 2)))
+        print("Annualized Return(Div): {}%".format(annual_rtn))
 
 
 def main():
@@ -156,16 +153,16 @@ def main():
         initial_capital = 1
 
         """ 2. Set up ticker"""
-        strat = Backtester(start, end, initial_capital)
+        strat = Backtester(start, end, initial_capital, 1)
         strat.set_ticker(ticker, asset_type_="STK")
         strat.set_dividends_mode(mode_=True)
         """ 3. Start Backtest"""
         strat.back_test()
         strat.get_backtest_result()
-        plt.plot(strat.result[:, -1], strat.result[:, RESULT_MAPPING["total_pnl"]], label=strat.ticker_trading[0])
-    plt.grid()
-    plt.legend()
-    plt.show()
+        # plt.plot(strat.result[:, -1], strat.result[:, RESULT_MAPPING["total_pnl"]], label=strat.ticker_trading[0])
+    # plt.grid()
+    # plt.legend()
+    # plt.show()
 
 
 if __name__ == '__main__':

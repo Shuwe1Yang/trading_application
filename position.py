@@ -9,6 +9,7 @@ class Position:
 
         self.asset = asset_obj_
         self.shares = 0
+        self.cur_div = 0
         self.cost_basis = 0
         self.market_value = 0
         self.div_accumulated = 0
@@ -19,7 +20,7 @@ class Position:
 
     @property
     def total_pnl(self):
-        return self.unrealized_pnl + self.realized_pnl - self.t_cost
+        return self.unrealized_pnl + self.realized_pnl - self.t_cost + self.div_accumulated
 
     def update_tick_event(self, timestamp_, asset_obj_):
         cur_price = asset_obj_.current_price
@@ -30,8 +31,9 @@ class Position:
         self.unrealized_pnl = (cur_price - self.cost_basis) * self.shares
         self.market_value = cur_price * self.shares
         if asset_obj_.type == 'STK':
-            div = self.shares * asset_obj_.div
-            self.div_accumulated += div
+            self.cur_div = self.shares * asset_obj_.div
+            self.div_accumulated += self.cur_div
+            # self.realized_pnl += div
 
     def _process_trx(self, timestamp_, new_shares_, trade_price_, t_cost_=0):
         if new_shares_ + self.shares != 0:
