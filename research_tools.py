@@ -56,13 +56,18 @@ class DataFrameGenerator(object):
 
 
 """ Some calculation function taking dictionary as input"""
-#TODO: Finalize dividends strategy calculations
 
 
-def get_annualized_return(date_series_, portfolio_value_series_):
+def get_annualized_return(date_series_, portfolio_value_series_, cash_invested_series, type_):
     days_hold = (date_series_[-1] - date_series_[0]).days
-    rtn = (1 + portfolio_value_series_[-1] / portfolio_value_series_[0]) ** (365 / days_hold) - 1
-    return rtn
+    if type_ == "Dollar_Cost_Avg":
+        rtn = (1 + portfolio_value_series_[-1] / cash_invested_series[-1]) ** (365 / days_hold) - 1
+    elif type_ == "Fixed_Capital":
+        rtn = (1 + portfolio_value_series_[-1] / portfolio_value_series_[0]) ** (365 / days_hold) - 1
+    else:
+        rtn = None
+
+    return round(rtn * 100, 2)
 
 
 def get_sharpe_ratio(date_series_, portfolio_value_series, rf_):

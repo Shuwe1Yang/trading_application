@@ -12,16 +12,20 @@ Output information to log file in live trading environment
 asset_mapping = {"OPT": OptionAsset, "STK": StockAsset}
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+STRATEGY_TYPE = {1: "Dollar_Cost_Avg", 2: "Fixed_Capital"}
 
 
 class Strategy(metaclass=abc.ABCMeta):
-    def __init__(self, initial_cash):
+    def __init__(self, initial_cash_, type_):
+        # Strategy type
+        self.strategy_type = STRATEGY_TYPE[type_]
         # Container
         self.positions = {}
         self.ticker_trading = []
         # Desired Information
         self.t_cost = 0
-        self.cash_on_hand = initial_cash
+        self.cash_on_hand = initial_cash_
+        self.cash_invested = initial_cash_
         self.market_value = 0
         self.unrealized_pnl = 0
         self.realized_pnl = 0
@@ -29,14 +33,6 @@ class Strategy(metaclass=abc.ABCMeta):
         self.total_shares = 0
         self.port_value = self.market_value + self.cash_on_hand
         self.total_pnl = self.unrealized_pnl + self.realized_pnl
-
-    # @property
-    # def port_value(self):
-    #     return self.market_value + self.cash_on_hand
-
-    # @property
-    # def total_pnl(self):
-    #     return self.unrealized_pnl + self.realized_pnl + self.t_cost
 
     @property
     def asset_trading(self):
@@ -83,22 +79,26 @@ class Strategy(metaclass=abc.ABCMeta):
             self.unrealized_pnl, self.realized_pnl, self.div_accumulated = 0, 0, 0
             self.market_value = 0
             for k, v in self.positions.items():
+                # Update Position Information
                 if ticker == k:
                     self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
-                self.div_accumulated += self.positions[ticker].div_accumulated
-                self.market_value += self.positions[ticker].market_value
+                # Update Strategy Information
                 self.unrealized_pnl += self.positions[ticker].unrealized_pnl
                 self.realized_pnl += self.positions[ticker].realized_pnl
-                self.port_value = self.cash_on_hand + self.market_value
                 self.total_pnl = self.unrealized_pnl + self.realized_pnl
 
+                self.div_accumulated += self.positions[ticker].div_accumulated
+                self.market_value += self.positions[ticker].market_value
+                self.cash_on_hand = self.cash_on_hand + self.positions[ticker].cur_div
+                self.port_value = self.cash_on_hand + self.market_value
+                self.total_pnl = self.unrealized_pnl + self.realized_pnl
         else:
             pass
 
 
 class BuyHoldStrategy(Strategy):
-    def __init__(self, initial_cash):
-        super().__init__(initial_cash)
+    def __init__(self, initial_cash, type_):
+        super().__init__(initial_cash, type_)
         self.tracker = []
 
     def trading_rules(self, timestamp_, asset_obj_, end_=None):
@@ -106,6 +106,7 @@ class BuyHoldStrategy(Strategy):
 
         if (timestamp_.year, timestamp_.month) not in self.tracker:
             self.cash_on_hand += 400
+            self.cash_invested += 400
             shares = 400 // price
             self.place_trade(timestamp_, asset_obj_, shares, price)
             self.tracker.append((timestamp_.year, timestamp_.month))
