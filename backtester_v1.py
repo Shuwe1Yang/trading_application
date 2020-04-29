@@ -125,12 +125,12 @@ class Backtester(BuyHoldStrategy):
                     flag = 0
 
     def get_backtest_result(self):
-        #TODO: Remove Calculation part and use research_tools functions
         mask = (self.result != None).all(axis=1)
         self.result = self.result[mask, :]
-
-        annual_rtn = get_annualized_return(self.result[:, -1], self.result[:, RESULT_MAPPING["port_value"]],
-                                           self.result[:, RESULT_MAPPING["cash_invested"]], self.strategy_type)
+        result_df = pd.DataFrame(self.result[:, 0:len(RESULT_MAPPING.keys())],
+                                 index=self.result[:, -1],
+                                 columns=RESULT_MAPPING.keys())
+        annual_rtn = get_annualized_return(result_df, self.strategy_type)
 
         print("============ {} ============".format(self.ticker_trading[0]))
         print("Final Portfolio Value: {}".format(round(self.port_value, 2)))
