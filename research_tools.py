@@ -58,27 +58,33 @@ class DataFrameGenerator(object):
 """ Some calculation function taking dictionary as input"""
 
 
-def get_annualized_return(date_series_, portfolio_value_series_, cash_invested_series, type_):
-    days_hold = (date_series_[-1] - date_series_[0]).days
+def get_annualized_return(result_df_, type_):
+    days_hold = (result_df_.index[-1] - result_df_.index[0]).days
+
     if type_ == "Dollar_Cost_Avg":
-        rtn = (1 + portfolio_value_series_[-1] / cash_invested_series[-1]) ** (365 / days_hold) - 1
+        rtn = (1 + result_df_["port_value"][-1] / result_df_["cash_invested"][-1]) ** (365 / days_hold) - 1
     elif type_ == "Fixed_Capital":
-        rtn = (1 + portfolio_value_series_[-1] / portfolio_value_series_[0]) ** (365 / days_hold) - 1
+        rtn = (1 + result_df_["port_value"][-1] / result_df_["port_value"][0]) ** (365 / days_hold) - 1
     else:
         rtn = None
 
     return round(rtn * 100, 2)
 
 
-def get_sharpe_ratio(date_series_, portfolio_value_series, rf_):
-    rtn_series = np.diff(portfolio_value_series) / portfolio_value_series[:-1]
-    rtn = get_annualized_return(date_series_, portfolio_value_series)
-    std = np.std(rtn_series) * np.sqrt(252)
+def get_sharpe_ratio(result_df_, rf_, type_):
+    rtn_series = result_df_["port_value"].pct_change().dropna()
+    rtn = get_annualized_return(result_df_, type_)
+    std = rtn_series.std() * np.sqrt(252)
     return (rtn - rf_) / std
 
 
-def get_max_drawdown():
-    pass
+def get_max_drawdown(result_df_, rolling_window_=None):
+    rtn_series = result_df_["port_value"].pct_change().dropna()
+    n = len(rtn_series)
+    if rolling_window_ is None:
+        rolling_window_ = n
+    peak_series = rtn_series.rolling(window=rolling_window_, min_periods=1).max()
+    return (rtn_series / peak_series - 1.0).min()
 
 
 def main():
