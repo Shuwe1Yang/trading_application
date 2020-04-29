@@ -27,8 +27,8 @@ class StockAsset(Asset):
 
 
 class OptionAsset(Asset):
-    def __init__(self, ticker_, strike_, expiration_, rf_, side_, multiplier_=100):
-        super().__init__(ticker_)
+    def __init__(self, ticker_, cur_price_, strike_, expiration_, rf_, side_, multiplier_=100):
+        super().__init__(ticker_, cur_price_)
         self.type = "OPT"
         self.multiplier = multiplier_
         self.strike = strike_
@@ -59,6 +59,14 @@ class OptionAsset(Asset):
             return self.strike * np.exp(-self.rf_ * self.time_to_exp) * norm(-self._d2(s0_)) - s0_ * norm(-self._d1(s0_))
         else:
             raise ValueError("Option Type is not valid")
+
+
+class FutureAsset(Asset):
+    def __init__(self, ticker_, cur_price_, expiration_):
+        super().__init__(ticker_, cur_price_)
+        self.type = "FUT"
+        self.multiplier = 100
+        self.expiration = expiration_
 
 
 def main():
