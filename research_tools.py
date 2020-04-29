@@ -55,7 +55,7 @@ class DataFrameGenerator(object):
             return df_
 
 
-""" Some calculation function taking dictionary as input"""
+""" Some calculation function taking df as input"""
 
 
 def get_annualized_return(result_df_, type_):
