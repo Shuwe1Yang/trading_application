@@ -5,6 +5,7 @@ from asset import *
 
 class Position:
     def __init__(self, asset_obj_):
+        # Trades history format = [Type, Ticker, Shares, Price, Realized_Pnl, t_cost]
         self.trades_history = {}
 
         self.asset = asset_obj_
@@ -17,6 +18,8 @@ class Position:
         self.realized_pnl = 0
         self.t_cost = 0
         self.last_time_update = None
+        self.winning_trades, self.winning_amt = 0, 0
+        self.losing_trades, self.losing_amt = 0, 0
 
     @property
     def total_pnl(self):
@@ -46,16 +49,23 @@ class Position:
         self.last_time_update = timestamp_
 
     def open_position(self, timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_=0):
-        self.trades_history[timestamp_] = (asset_obj_.ticker, new_shares_, trade_price_, t_cost_)
+        self.trades_history[timestamp_] = ["Open", asset_obj_.ticker, new_shares_, trade_price_, 0, t_cost_]
         self._process_trx(timestamp_, new_shares_, trade_price_, t_cost_)
 
     def close_position(self, timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_=0):
-        self.trades_history[timestamp_] = (asset_obj_.ticker, new_shares_, trade_price_, t_cost_)
-        self.realized_pnl += -new_shares_ * (trade_price_ - self.cost_basis) - t_cost_
+        amt = -new_shares_ * (trade_price_ - self.cost_basis)
+        self.trades_history[timestamp_] = ["Close", asset_obj_.ticker, new_shares_, trade_price_, amt, t_cost_]
+        self.realized_pnl += amt - t_cost_
         self._process_trx(timestamp_, new_shares_, trade_price_, t_cost_)
+        if amt > 0:
+            self.winning_trades += 1
+            self.winning_amt += amt
+        else:
+            self.losing_trades += 1
+            self.losing_amt += amt
 
     def update_trx_event(self, timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_=0):
-        self.trades_history[timestamp_] = (asset_obj_.ticker, new_shares_, trade_price_, t_cost_)
+        self.trades_history[timestamp_] = ["Update", asset_obj_.ticker, new_shares_, trade_price_, 0, t_cost_]
 
         if self.shares == 0:
             self.open_position(timestamp_, asset_obj_, new_shares_, trade_price_, t_cost_)

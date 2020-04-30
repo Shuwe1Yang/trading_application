@@ -33,6 +33,8 @@ class Strategy(metaclass=abc.ABCMeta):
         self.total_shares = 0
         self.port_value = self.market_value + self.cash_on_hand
         self.total_pnl = self.unrealized_pnl + self.realized_pnl
+        self.winning_trades, self.winning_amt = 0, 0
+        self.losing_trades, self.losing_amt = 0, 0
 
     @property
     def asset_trading(self):
@@ -70,28 +72,45 @@ class Strategy(metaclass=abc.ABCMeta):
     def _warm_up(self):
         pass
 
+    def _re_setter(self):
+        self.unrealized_pnl, self.realized_pnl, self.div_accumulated, self.market_value = 0, 0, 0, 0
+        self.winning_trades, self.losing_trades, self.winning_amt, self.losing_amt = 0, 0, 0, 0
+
+    def _pnl_helper(self, ticker_):
+        self.unrealized_pnl += self.positions[ticker_].unrealized_pnl
+        self.realized_pnl += self.positions[ticker_].realized_pnl
+        self.total_pnl = self.unrealized_pnl + self.realized_pnl
+
+    def _port_stats_helper(self, ticker_):
+        self.div_accumulated += self.positions[ticker_].div_accumulated
+        self.market_value += self.positions[ticker_].market_value
+        self.cash_on_hand = self.cash_on_hand + self.positions[ticker_].cur_div
+        self.port_value = self.cash_on_hand + self.market_value
+
+    def _trade_stats_helper(self, ticker_):
+        self.winning_trades += self.positions[ticker_].winning_trades
+        self.winning_amt += self.positions[ticker_].winning_amt
+        self.losing_trades += self.positions[ticker_].losing_trades
+        self.losing_amt += self.positions[ticker_].losing_amt
+
     def _add_ticker(self, ticker_):
         self.ticker_trading.append(ticker_)
 
     def _update(self, timestamp_, asset_obj_):
         ticker = asset_obj_.ticker
         if ticker in self.positions.keys():
-            self.unrealized_pnl, self.realized_pnl, self.div_accumulated = 0, 0, 0
-            self.market_value = 0
+            self._re_setter()
             for k, v in self.positions.items():
                 # Update Position Information
                 if ticker == k:
                     self.positions[ticker].update_tick_event(timestamp_, asset_obj_)
                 # Update Strategy Information
-                self.unrealized_pnl += self.positions[ticker].unrealized_pnl
-                self.realized_pnl += self.positions[ticker].realized_pnl
-                self.total_pnl = self.unrealized_pnl + self.realized_pnl
-
-                self.div_accumulated += self.positions[ticker].div_accumulated
-                self.market_value += self.positions[ticker].market_value
-                self.cash_on_hand = self.cash_on_hand + self.positions[ticker].cur_div
-                self.port_value = self.cash_on_hand + self.market_value
-                self.total_pnl = self.unrealized_pnl + self.realized_pnl
+                # -- PnL --
+                self._pnl_helper(ticker)
+                # -- Portfolio --
+                self._port_stats_helper(ticker)
+                # -- Trades Stats --
+                self._trade_stats_helper(ticker)
         else:
             pass
 

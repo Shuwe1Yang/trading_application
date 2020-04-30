@@ -87,6 +87,14 @@ def get_max_drawdown(result_df_, rolling_window_=None):
     return (rtn_series / peak_series - 1.0).min()
 
 
+def get_winning_losing_trades_and_amount(result_df_):
+    winning_trades = result_df_["winning_trades"][-1]
+    avg_winning_amt = result_df_["winning_amt"][-1] / winning_trades
+    losing_trades = result_df_["losing_trades"][-1]
+    avg_losing_amt = result_df_["losing_amt"][-1] / losing_trades
+    return winning_trades, avg_winning_amt, losing_trades, avg_losing_amt
+
+
 def main():
     # ticker = ['QYLD', '^NDX']
     # start, end = '2014-01-01', '2020-01-01'
