@@ -1,5 +1,3 @@
-import configparser
-import quandl
 import datetime as dt
 import pandas as pd
 import numpy as np
@@ -21,8 +19,9 @@ from research_tools import *
 """
 
 INDEX_MAPPING = {"^GSPC": "SPX", "^NDX": "NDX100"}
-RESULT_MAPPING = {"cash_on_hand": 0, "total_pnl": 1, "realized_pnl": 2, "unrealized_pnl": 3,
-                  "total_shares": 4, "port_value": 5, "div_accumulated": 6, "market_value": 7, "cash_invested": 8}
+RESULT_MAPPING = {"cash_on_hand": 0, "total_pnl": 1, "realized_pnl": 2, "unrealized_pnl": 3, "total_shares": 4,
+                  "port_value": 5, "div_accumulated": 6, "market_value": 7, "cash_invested": 8,
+                  "winning_trades": 9, "losing_trades": 10, "winning_amt": 11, "losing_amt": 12}
 
 
 class Backtester(BuyHoldStrategy):
@@ -101,12 +100,12 @@ class Backtester(BuyHoldStrategy):
         flag = 1
         while flag:
             df, div_df = self._set_up_df()
-            iter = df.iterrows()
+            df_iter = df.iterrows()
 
-            for i, item in enumerate(iter):
+            for i, item in enumerate(df_iter):
                 idx, row = item
-                self._record_result(i, idx)
                 if div_df is not None:
+                    #TODO: Cost run-time here
                     asset_obj_list = [StockAsset(x, row[x], div_df.loc[idx, x]) for x in div_df.columns.tolist()] + \
                                      [StockAsset(x, row[x]) for x in row.index.tolist() if x not in div_df.columns.tolist()]
                 else:
@@ -124,15 +123,18 @@ class Backtester(BuyHoldStrategy):
                 if (row == df.iloc[-1, :]).all():
                     flag = 0
 
+                self._record_result(i, idx)
+
     def get_backtest_result(self):
         mask = (self.result != None).all(axis=1)
         self.result = self.result[mask, :]
         result_df = pd.DataFrame(self.result[:, 0:len(RESULT_MAPPING.keys())],
                                  index=self.result[:, -1],
                                  columns=RESULT_MAPPING.keys())
+
         annual_rtn = get_annualized_return(result_df, self.strategy_type)
 
-        print("============ {} ============".format(self.ticker_trading[0]))
+        print("============ {} ============".format(self.ticker_trading))
         print("Final Portfolio Value: {}".format(round(self.port_value, 2)))
         print("Cash remained: {}".format(round(self.cash_on_hand, 2)))
         print("Avg Cost: {}".format(round(self.positions[self.ticker_trading[0]].cost_basis), 2))
@@ -159,10 +161,6 @@ def main():
         """ 3. Start Backtest"""
         strat.back_test()
         strat.get_backtest_result()
-        # plt.plot(strat.result[:, -1], strat.result[:, RESULT_MAPPING["total_pnl"]], label=strat.ticker_trading[0])
-    # plt.grid()
-    # plt.legend()
-    # plt.show()
 
 
 if __name__ == '__main__':
