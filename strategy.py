@@ -143,7 +143,7 @@ class BuyHoldStrategyTwo(Strategy):
 
 
 def main():
-    print(40//23)
+    pass
 
 
 if __name__ == '__main__':
