@@ -133,15 +133,8 @@ class Backtester(BuyHoldStrategy):
                                  columns=RESULT_MAPPING.keys())
 
         annual_rtn = get_annualized_return(result_df, self.strategy_type)
-
-        print("============ {} ============".format(self.ticker_trading))
-        print("Final Portfolio Value: {}".format(round(self.port_value, 2)))
-        print("Cash remained: {}".format(round(self.cash_on_hand, 2)))
-        print("Avg Cost: {}".format(round(self.positions[self.ticker_trading[0]].cost_basis), 2))
-        print("Total Shares: {}".format(self.total_shares))
-        print("Div Acculated: {}".format(round(self.div_accumulated, 2)))
-        print("Annualized Return(Div): {}%".format(annual_rtn))
-
+        #TODO: more to add
+        
 
 def main():
     print("************ Buy Hold Strat: Add 1 share per month ************")
